@@ -159,10 +159,11 @@ class MenuContext(BaseContext):
                                        payload={'menu': 'write_wishlist'})
 
         friend: Optional[User] = await user.get_friend()
-        friend_description: str = "Распределение уже скоро!" if friend is None else f"{friend.first_name} {friend.last_name}"
+        friend_description: str = "Распределение уже скоро!" if friend is None or not user.friend_available else f"{friend.first_name} {friend.last_name}"
 
         photo_path_second: str = os.path.join(settings.STATIC_PATH, 'hse2.jpg')
-        photo_id_second: str = await get_photo_id(user.vk_id, photo_path_second)
+        photo_id_second: str = await get_photo_id(user.vk_id,
+                                                  photo_path_second)
 
         friend_template = Template(
             title="Твой друг!",
@@ -205,7 +206,7 @@ class MenuContext(BaseContext):
 
     async def _get_address_handler(self, user: User) -> bool:
         friend: Optional[User] = await user.get_friend()
-        if friend is None:
+        if friend is None or not user.friend_available:
             await send_message(peer_id=user.vk_id,
                                message=self._no_friends_text)
             return False
@@ -219,7 +220,7 @@ class MenuContext(BaseContext):
 
     async def _get_wishlist_handler(self, user: User) -> bool:
         friend: Optional[User] = await user.get_friend()
-        if friend is None:
+        if friend is None or not user.friend_available:
             await send_message(peer_id=user.vk_id,
                                message=self._no_friends_text)
             return False
@@ -251,8 +252,16 @@ class MenuContext(BaseContext):
 
 class TutorialContext(BaseContext):
     def __init__(self):
-        self._greeting_text = "Привет это краткая инстп=рукция!!"
-        self._from_context_text = "Тут мы тоже можем что-нибудь сказать!!"
+        self._greeting_text = "Привет!"
+        self._from_context_text = """Мы рады приветствовать тебя на Штайном Санте! Основные правила ты уже знаешь, давай я расскажу тебе о том, как пользоваться этим ботом! 
+
+В разделе “заполнить адрес” ты можешь ввести адрес места, куда нужно будет отправить твой подарок. В этом же разделе можно посмотреть адрес, который ты вводил последним и в случае чего изменить его. 
+
+В разделе “заполнить вишлист” отправь список того, чтобы ты хотел(а) получить в посылке. Список может быть только текстовой (+ смайлы при необходимости). В этом же разделе можно посмотреть тот вишлист, который ты заполнил(а) ранее. В случае чего, ты можешь его здесь же и изменить. 
+
+В разделе “адрес друга” и “вишлист друга” ты можешь посмотреть то, что заполнил человек, которому ты будешь собирать подарок. 
+
+Если у тебя возникнут какие-нибудь вопросы, то https://vk.com/wateren на них ответит! """
 
     async def on_context_handler(self, message: UserMessage) -> bool:
         user: User = message.user

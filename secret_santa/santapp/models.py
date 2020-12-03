@@ -19,7 +19,7 @@ class User(models.Model):
     last_name = models.CharField(max_length=64)
     registration_time = models.DateTimeField(auto_now_add=True)
 
-    data_available_time = models.DateTimeField(auto_now_add=True)
+    friend_available = models.BooleanField(default=False)
     address = models.CharField(max_length=256, null=True, default=None)
     wishlist = models.CharField(max_length=1024, null=True, default=None)
 

@@ -18,7 +18,7 @@ SECRET_KEY = ''
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['fed27d464fcd.ngrok.io', '127.0.0.1']
+ALLOWED_HOSTS = ['65486a53e644.ngrok.io', '127.0.0.1']
 
 # Application definition
 
@@ -125,6 +125,9 @@ SECRET_KEY = config_yaml['django']['secret']
 MESSAGE_TIMEOUT = config_yaml['server']['message_timeout']
 
 LOG_FILE = config_yaml['server']['log_file']
+
+HOST = config_yaml['server']['host']
+PORT = config_yaml['server']['port']
 
 LOG_FORMAT = '%(name)s - %(levelname)s - %(asctime)s # %(message)s'
 
