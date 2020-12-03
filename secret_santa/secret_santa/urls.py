@@ -15,7 +15,9 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+from santapp.views import http_vk_handler
 
 urlpatterns = [
+    path('', http_vk_handler),
     path('admin/', admin.site.urls),
 ]
