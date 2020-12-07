@@ -9,8 +9,10 @@ from vkwave.bots import Keyboard
 
 from secret_santa import settings
 
-from ..message import UserMessage
+from ..message.message import UserMessage
+from ..message.keyboard import BackKeyboard, BeforeGameTemplate, OnGameTemplate
 from ..vk_utils.message import send_message, get_photo_id
+
 from ..models import User
 
 
@@ -38,11 +40,6 @@ class WrittingWishlistContext(BaseContext):
         self._from_context_text = "Твой вишлист успешно записан!"
         self._message_not_valid_text = "Вишлист не может быть пустым!"
 
-    def _get_keyboard(self) -> str:
-        kb: Keyboard = Keyboard(one_time=True)
-        kb.add_text_button(text="Назад")
-        return kb.get_keyboard()
-
     async def on_context_handler(self, message: UserMessage) -> bool:
         if message.text == '':
             await self._invalid_input_handler(message.user)
@@ -68,7 +65,7 @@ class WrittingWishlistContext(BaseContext):
             text += "Ранее ты указал(а): {}".format(wishlist)
         await send_message(peer_id=user.vk_id,
                            message=text,
-                           keyboard=self._get_keyboard())
+                           keyboard=BackKeyboard.get_keyboard())
 
     async def _from_contex_handler(self, user: User) -> None:
         await send_message(peer_id=user.vk_id, message=self._from_context_text)
@@ -84,11 +81,6 @@ class WrittingAddressContext(WrittingWishlistContext):
         self._to_context_text = "Напиши свой адрес, чтобы Штайный Санта смог отправить тебе подарок!\n\n"
         self._from_context_text = "Твой адрес успешно записан!"
         self._message_not_valid_text = "Адрес не может быть пустым!"
-
-    def _get_keyboard(self) -> str:
-        kb: Keyboard = Keyboard(one_time=True)
-        kb.add_text_button(text="Назад")
-        return kb.get_keyboard()
 
     async def on_context_handler(self, message: UserMessage) -> bool:
         if message.text == '':
@@ -115,7 +107,7 @@ class WrittingAddressContext(WrittingWishlistContext):
             text += "Ранее ты указал(а): {}".format(address)
         await send_message(peer_id=user.vk_id,
                            message=text,
-                           keyboard=self._get_keyboard())
+                           keyboard=BackKeyboard.get_keyboard())
 
     async def _from_contex_handler(self, user: User) -> None:
         await send_message(peer_id=user.vk_id, message=self._from_context_text)
@@ -131,11 +123,6 @@ class WrittingFullNameContext(WrittingWishlistContext):
         self._to_context_text = "Напиши свое ФИО, твой подарок нашел тебя!\n\n"
         self._from_context_text = "Твое ФИО успешно записано!"
         self._message_not_valid_text = "ФИО не может быть пустым!"
-
-    def _get_keyboard(self) -> str:
-        kb: Keyboard = Keyboard(one_time=True)
-        kb.add_text_button(text="Назад")
-        return kb.get_keyboard()
 
     async def on_context_handler(self, message: UserMessage) -> bool:
         if message.text == '':
@@ -162,7 +149,7 @@ class WrittingFullNameContext(WrittingWishlistContext):
             text += "Ранее ты указал(а): {}".format(full_name)
         await send_message(peer_id=user.vk_id,
                            message=text,
-                           keyboard=self._get_keyboard())
+                           keyboard=BackKeyboard.get_keyboard())
 
     async def _from_contex_handler(self, user: User) -> None:
         await send_message(peer_id=user.vk_id, message=self._from_context_text)
@@ -192,44 +179,12 @@ class MenuContext(BaseContext):
 
         self._unknown_message_text: str = "Чтобы совершить какие-либо действия, воспользуйся кнопками на карточках."
 
-    async def _get_message_template(self, user: User) -> Template:
-        photo_path_first: str = os.path.join(settings.STATIC_PATH, 'hse1.jpg')
-        photo_id_first: str = await get_photo_id(user.vk_id, photo_path_first)
-        input_template = Template(
-            title="Расскажи немного о себе!",
-            description=f"{user.first_name} {user.last_name}",
-            photo_id=photo_id_first)
+    async def _get_message_template(self, user: User) -> str:
+        template: Union[
+            OnGameTemplate,
+            BeforeGameTemplate] = BeforeGameTemplate if not user.friend_available else OnGameTemplate
 
-        input_template.add_text_button("Заполнить адрес",
-                                       color=ButtonColor.SECONDARY,
-                                       payload={'menu': 'write_address'})
-        input_template.add_text_button("Заполнить вишлист",
-                                       payload={'menu': 'write_wishlist'})
-        input_template.add_text_button("Заполнить ФИО",
-                                       payload={'menu': 'write_full_name'})
-
-        friend: Optional[User] = await user.get_friend()
-        friend_description: str = "Распределение уже скоро!" if friend is None or not user.friend_available else f"{friend.first_name} {friend.last_name}"
-
-        photo_path_second: str = os.path.join(settings.STATIC_PATH, 'hse2.jpg')
-        photo_id_second: str = await get_photo_id(user.vk_id,
-                                                  photo_path_second)
-
-        friend_template = Template(
-            title="Твой друг!",
-            description=friend_description,
-            #photo_id="222556886_457240311_0b1f8444fd9d841bed")
-            photo_id=photo_id_second)
-
-        friend_template.add_text_button("Адрес друга",
-                                        color=ButtonColor.SECONDARY,
-                                        payload={'menu': 'get_address'})
-        friend_template.add_text_button("Вишлист друга",
-                                        payload={'menu': 'get_wishlist'})
-        friend_template.add_text_button("ФИО друга",
-                                        payload={'menu': 'get_full_name'})
-
-        return Template.generate_carousel(input_template, friend_template)
+        return await template.get_template(user)
 
     async def on_context_handler(self, message: UserMessage) -> bool:
         if not self._is_valid(message):
@@ -311,8 +266,6 @@ class MenuContext(BaseContext):
         user.write_full_name()
         await sync_to_async(user.save)()
         return True
-
-
 
     async def _write_address_handler(self, user: User) -> bool:
         user.write_address()

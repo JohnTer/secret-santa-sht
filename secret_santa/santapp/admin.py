@@ -6,6 +6,7 @@ from asgiref.sync import async_to_sync
 
 from santapp.models import User, Message
 from .vk_utils.message import send_message
+from .message.keyboard import BeforeGameTemplate, OnGameTemplate
 
 
 def _distribute_to_participants(modeladmin, request, queryset) -> None:
@@ -46,9 +47,11 @@ def _mailling(modeladmin, request, queryset) -> None:
     user_list: list[User] = list(queryset)
 
     message: Message = Message.objects.get(name='mail')
-    print(message, user_list)
+    template: Union[OnGameTemplate, BeforeGameTemplate] = None
     for user in user_list:
-        async_to_sync(send_message)(user.vk_id, message.text)
+        template = BeforeGameTemplate if not user.friend_available else OnGameTemplate
+        template_raw: str = async_to_sync(template.get_template)(user)
+        async_to_sync(send_message)(user.vk_id, message.text, template_raw)
 
 
 _distribute_to_participants.short_description = "Distribute to participants"

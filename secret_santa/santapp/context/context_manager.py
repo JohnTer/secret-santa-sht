@@ -5,7 +5,7 @@ import orjson
 import aiohttp
 from asgiref.sync import sync_to_async
 
-from ..message import UserMessage
+from ..message.message import UserMessage
 from ..vk_utils.message import get_user_name, SingletonMeta
 from .contexts import MenuContext, WrittingAddressContext, WrittingWishlistContext, TutorialContext, WrittingFullNameContext
 from ..models import User, UserStateEnum
