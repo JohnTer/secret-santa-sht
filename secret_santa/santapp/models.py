@@ -9,6 +9,7 @@ class UserStateEnum(object):
     MENU = 'menu'
     WISHLIST = 'wishlist'
     ADDRESS = 'address'
+    FULL_NAME = 'fullname'
 
 
 class User(models.Model):
@@ -21,7 +22,8 @@ class User(models.Model):
 
     friend_available = models.BooleanField(default=False)
     address = models.CharField(max_length=256, null=True, default=None)
-    wishlist = models.CharField(max_length=1024, null=True, default=None)
+    wishlist = models.CharField(max_length=2048, null=True, default=None)
+    full_name = models.CharField(max_length=256, null=True, default=None)
 
     present_to = models.ForeignKey('self',
                                    on_delete=models.CASCADE,
@@ -84,4 +86,20 @@ class User(models.Model):
     def write_address_done(self):
         logging.info(
             f'User [vk_id={self.vk_id}] change state from [{UserStateEnum.ADDRESS}] to [{UserStateEnum.MENU}]'
+        )
+
+    @transition(field=state,
+                source=UserStateEnum.MENU,
+                target=UserStateEnum.FULL_NAME)
+    def write_full_name(self):
+        logging.info(
+            f'User [vk_id={self.vk_id}] change state from [{UserStateEnum.WISHLIST}] to [{UserStateEnum.FULL_NAME}]'
+        )
+
+    @transition(field=state,
+                source=UserStateEnum.FULL_NAME,
+                target=UserStateEnum.MENU)
+    def write_full_name_done(self):
+        logging.info(
+            f'User [vk_id={self.vk_id}] change state from [{UserStateEnum.FULL_NAME}] to [{UserStateEnum.MENU}]'
         )
