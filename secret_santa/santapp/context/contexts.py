@@ -126,6 +126,53 @@ class WrittingAddressContext(WrittingWishlistContext):
                            message=self._message_not_valid_text)
 
 
+class WrittingFullNameContext(WrittingWishlistContext):
+    def __init__(self):
+        self._to_context_text = "Напиши свое ФИО, твой подарок нашел тебя!\n\n"
+        self._from_context_text = "Твое ФИО успешно записано!"
+        self._message_not_valid_text = "ФИО не может быть пустым!"
+
+    def _get_keyboard(self) -> str:
+        kb: Keyboard = Keyboard(one_time=True)
+        kb.add_text_button(text="Назад")
+        return kb.get_keyboard()
+
+    async def on_context_handler(self, message: UserMessage) -> bool:
+        if message.text == '':
+            await self._invalid_input_handler(message.user)
+            return True
+
+        full_name: str = message.text
+        user: User = message.user
+        user.write_full_name_done()
+
+        if full_name != "Назад":
+            user.full_name = full_name
+            await sync_to_async(message.user.save)()
+            await self._from_contex_handler(user)
+        else:
+            await sync_to_async(message.user.save)()
+
+        return True
+
+    async def to_context_handler(self, user: User) -> None:
+        full_name: Optional[str] = user.full_name
+        text: str = self._to_context_text
+        if full_name is not None:
+            text += "Ранее ты указал(а): {}".format(full_name)
+        await send_message(peer_id=user.vk_id,
+                           message=text,
+                           keyboard=self._get_keyboard())
+
+    async def _from_contex_handler(self, user: User) -> None:
+        await send_message(peer_id=user.vk_id, message=self._from_context_text)
+        logging.info(f'User [{user.vk_id}] completed writing the full_name')
+
+    async def _invalid_input_handler(self, user: User) -> None:
+        await send_message(peer_id=user.vk_id,
+                           message=self._message_not_valid_text)
+
+
 class MenuContext(BaseContext):
     def __init__(self, writting_address_ctx: WrittingAddressContext,
                  writting_wishlist_ctx: WrittingWishlistContext):
@@ -141,7 +188,9 @@ class MenuContext(BaseContext):
 
         self._no_wishlist_text: str = "Твой друг еще не заполнил вишлист."
 
-        self._unknown_message_text = "Чтобы совершить какие-либо действия, воспользуйся кнопками на карточках."
+        self._no_full_name_text: str = "Твой друг еще не заполнил ФИО."
+
+        self._unknown_message_text: str = "Чтобы совершить какие-либо действия, воспользуйся кнопками на карточках."
 
     async def _get_message_template(self, user: User) -> Template:
         photo_path_first: str = os.path.join(settings.STATIC_PATH, 'hse1.jpg')
@@ -157,6 +206,8 @@ class MenuContext(BaseContext):
                                        payload={'menu': 'write_address'})
         input_template.add_text_button("Заполнить вишлист",
                                        payload={'menu': 'write_wishlist'})
+        input_template.add_text_button("Заполнить ФИО",
+                                       payload={'menu': 'write_full_name'})
 
         friend: Optional[User] = await user.get_friend()
         friend_description: str = "Распределение уже скоро!" if friend is None or not user.friend_available else f"{friend.first_name} {friend.last_name}"
@@ -176,6 +227,8 @@ class MenuContext(BaseContext):
                                         payload={'menu': 'get_address'})
         friend_template.add_text_button("Вишлист друга",
                                         payload={'menu': 'get_wishlist'})
+        friend_template.add_text_button("ФИО друга",
+                                        payload={'menu': 'get_full_name'})
 
         return Template.generate_carousel(input_template, friend_template)
 
@@ -190,10 +243,14 @@ class MenuContext(BaseContext):
             next_state = await self._get_address_handler(message.user)
         elif button_type == 'get_wishlist':
             next_state = await self._get_wishlist_handler(message.user)
+        elif button_type == 'get_full_name':
+            next_state = await self._get_full_name_handler(message.user)
         elif button_type == 'write_wishlist':
             next_state = await self._write_wishlist_handler(message.user)
         elif button_type == 'write_address':
             next_state = await self._write_address_handler(message.user)
+        elif button_type == 'write_full_name':
+            next_state = await self._write_full_name_handler(message.user)
         else:
             next_state = await self._unknown_message_handler(message)
 
@@ -232,10 +289,31 @@ class MenuContext(BaseContext):
         logging.info(f'User [{user.vk_id}] get friends fishlist')
         return False
 
+    async def _get_full_name_handler(self, user: User) -> bool:
+        friend: Optional[User] = await user.get_friend()
+        if friend is None or not user.friend_available:
+            await send_message(peer_id=user.vk_id,
+                               message=self._no_friends_text)
+            return False
+
+        message: str = friend.full_name or self._no_full_name_text
+
+        await send_message(peer_id=user.vk_id, message=message)
+
+        logging.info(f'User [{user.vk_id}] get friends full_name')
+        return False
+
     async def _write_wishlist_handler(self, user: User) -> bool:
         user.write_wishlist()
         await sync_to_async(user.save)()
         return True
+
+    async def _write_full_name_handler(self, user: User) -> bool:
+        user.write_full_name()
+        await sync_to_async(user.save)()
+        return True
+
+
 
     async def _write_address_handler(self, user: User) -> bool:
         user.write_address()
@@ -252,8 +330,8 @@ class MenuContext(BaseContext):
 
 class TutorialContext(BaseContext):
     def __init__(self):
-        self._greeting_text = "Привет!"
-        self._from_context_text = """Мы рады приветствовать тебя на Штайном Санте! Основные правила ты уже знаешь, давай я расскажу тебе о том, как пользоваться этим ботом! 
+        self._greeting_text: str = "Привет!"
+        self._from_context_text: str = """Мы рады приветствовать тебя на Штайном Санте! Основные правила ты уже знаешь, давай я расскажу тебе о том, как пользоваться этим ботом! 
 
 В разделе “заполнить адрес” ты можешь ввести адрес места, куда нужно будет отправить твой подарок. В этом же разделе можно посмотреть адрес, который ты вводил последним и в случае чего изменить его. 
 
