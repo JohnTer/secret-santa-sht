@@ -12,6 +12,14 @@ class UserStateEnum(object):
     FULL_NAME = 'fullname'
 
 
+class Message(models.Model):
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=64)
+
+    text = models.CharField(max_length=2048)
+    attachment_filename = models.CharField(max_length=64)
+
+
 class User(models.Model):
     id = models.AutoField(primary_key=True)
     vk_id = models.IntegerField(unique=True)

@@ -198,7 +198,6 @@ class MenuContext(BaseContext):
         input_template = Template(
             title="Расскажи немного о себе!",
             description=f"{user.first_name} {user.last_name}",
-            #photo_id="222556886_457240319_032f9c52c15cbd11cf")
             photo_id=photo_id_first)
 
         input_template.add_text_button("Заполнить адрес",
